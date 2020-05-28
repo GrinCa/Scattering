@@ -1,0 +1,172 @@
+//--------------------------------------------------------------------------
+// Load libraries and mesh
+//--------------------------------------------------------------------------
+
+//verbosity = 0;
+
+load "msh3" // for buildlayers function
+load "gmsh" // for loading gmsh meshes
+
+string root="Matrices/Wall/";
+mesh3 Th = gmshload3("Wall.msh");
+
+
+int BGL = 1;
+int BGR = 2;
+int PML = 3;
+int PMLext = 4;
+
+
+//--------------------------------------------------------------------------
+// Define variables, functions, and macros
+//--------------------------------------------------------------------------
+
+macro Grad(p) [dx(p),dy(p),dz(p)] // EOM -- End Of Macro
+
+//--------------------------------------------------------------------------
+// Define finite element space, solid and fluid
+//--------------------------------------------------------------------------
+
+fespace VhF(Th,P2);
+VhF p,v;
+
+//--------------------------------------------------------------------------
+// PML functions
+//--------------------------------------------------------------------------
+real L1x = 2.5;//real L1x = 5.5;
+real L2x = 3.51;
+real L1y = 0.5;//real L1y = 3.0;
+real L2y = 1.51;
+real L1z = 4.0;//real L1z = 3.0;
+real L2z = 5.01;
+
+real km=2.6;
+
+func PML3x=(L2x-L1x)/(L2x-abs(x)) ;
+func decay3x=(abs(x)>L1x) ? 1+1i*PML3x/km : 1 ;
+func PML3y=(L2y-L1y)/(L2y-abs(y)) ;
+func decay3y=(abs(y)>L1y) ? 1+1i*PML3y/km : 1 ;
+func PML3z=(L2z-L1z)/(L2z-abs(z)) ;
+func decay3z=(abs(z)>L1z) ? 1+1i*PML3z/km : 1 ;
+
+
+//--------------------------------------------------------------------------
+// Define varf
+//--------------------------------------------------------------------------
+
+//Acoustic
+
+varf h(p, v) = int3d(Th, BGR, BGL)( Grad(p)'*Grad(v) ) + 
+	       on(PMLext, p=0);
+
+varf q(p, v) = int3d(Th, BGR, BGL)( p*v ); // coeff_LHS = {1,(2*pi*f/c)^2} !!
+
+//PML
+varf qpmlr(p, v) = int3d(Th, PML)( p*v*real( decay3x*decay3y*decay3z ) );
+varf qpmli(p, v) = int3d(Th, PML)( p*v*imag( decay3x*decay3y*decay3z ) );
+
+varf hpmlr(p, v) = int3d(Th, PML)( dx(p)*dx(v)*real( decay3y*decay3z/decay3x ) +
+			      	   dy(p)*dy(v)*real( decay3x*decay3z/decay3y ) +
+			   	   dz(p)*dz(v)*real( decay3x*decay3y/decay3z ) );
+varf hpmli(p, v) = int3d(Th, PML)( dx(p)*dx(v)*imag( decay3y*decay3z/decay3x ) +
+			           dy(p)*dy(v)*imag( decay3x*decay3z/decay3y ) +
+			   	   dz(p)*dz(v)*imag( decay3x*decay3y/decay3z ) );
+
+
+//--------------------------------------------------------------------------
+// Define matrices
+//--------------------------------------------------------------------------
+
+//Acoustic
+matrix H = h(VhF, VhF);
+matrix Q = q(VhF, VhF);
+//PML
+matrix Hpmlr = hpmlr(VhF, VhF);
+matrix Hpmli = hpmli(VhF, VhF);
+matrix Qpmlr = qpmlr(VhF, VhF);
+matrix Qpmli = qpmli(VhF, VhF);
+
+
+
+// Subset for exporting Nodes
+VhF[int] vhn(3);
+vhn[0] = x;
+vhn[1] = y;
+vhn[2] = z;
+
+
+// export Nodes
+{
+  ofstream fout(root+"Nodes.txt");
+  for (int n = 0; n < VhF.ndof; n++)
+  {
+    for (int d = 0; d < 3; d++)
+      fout << "  " << vhn[d][][n]; // x, y, z
+    fout << endl;
+  }
+}
+
+// export Labels of thetrahedra and triangles
+{
+  ofstream fout(root+"labels.txt");
+  real xg = 0;
+  real yg = 0;
+  real zg = 0;
+  for (int i=0; i<Th.nt; i++){
+    xg = 0;
+    yg = 0;
+    zg = 0;
+    for (int j=0; j<VhF.ndofK; j++){
+       xg = xg + vhn[0][][VhF(i,j)];
+       yg = yg + vhn[1][][VhF(i,j)];
+       zg = zg + vhn[2][][VhF(i,j)];
+    }
+    real nuRegion = Th(xg/VhF.ndofK,yg/VhF.ndofK,zg/VhF.ndofK).region;
+    for (int j=0; j<VhF.ndofK; j++){
+       real nuNode = VhF(i,j);
+       fout << nuNode << "\t" << nuRegion << endl;
+    }
+  }
+}
+
+
+{
+  ofstream fout(root+"connectivity_table.txt");
+  for (int i=0; i<Th.nt; i++){
+    for (int j=0; j<VhF.ndofK; j++){
+      fout << VhF(i,j) << " ";
+    }
+    fout << endl;
+  }
+}
+
+
+
+
+{
+ofstream fout(root+"Hpmlr.txt");
+fout<< Hpmlr <<endl;
+}
+{
+ofstream fout(root+"Qpmlr.txt");
+fout<< Qpmlr <<endl;
+}
+{
+ofstream fout(root+"Hpmli.txt");
+fout<< Hpmli <<endl;
+}
+{
+ofstream fout(root+"Qpmli.txt");
+fout<< Qpmli <<endl;
+}
+{
+ofstream fout(root+"H.txt");
+fout<< H <<endl;
+}
+{
+ofstream fout(root+"Q.txt");
+fout<< Q <<endl;
+}
+
+
+
