@@ -56,7 +56,7 @@ func decay3z=(abs(z)>L1z) ? 1+1i*PML3z/km : 1 ;
 
 //Acoustic
 
-varf h(p, v) = int3d(Th, BGR, BGL)( Grad(p)'*Grad(v) ) + 
+varf h(p, v) = int3d(Th, BGR, BGL)( Grad(p)'*Grad(v) ) + //'
 	       on(PMLext, p=0);
 
 varf q(p, v) = int3d(Th, BGR, BGL)( p*v ); // coeff_LHS = {1,(2*pi*f/c)^2} !!

@@ -39,8 +39,8 @@ addpath(genpath(strcat(pwd,'/',Derivatives)));
 %--------------------------------------------------------------------------
 
 % Input parameters for Matlab calculation
-flag.rerun = 0; % to recalculate FreeFem++ matrices
-flag.recalculated = 0; % allow WCAWE and/or FE recalculation
+flag.rerun = 1; % to recalculate FreeFem++ matrices
+flag.recalculated = 1; % allow WCAWE and/or FE recalculation
 flag.calculateFE = 1;  % calculate FE solution
 flag.calculateWCAWE = 0; % calculate WCAWE solution
 
@@ -55,6 +55,8 @@ flag.getmatrices = 1;
 
 if flag.converge || flag.plotMQP || flag.convert2VTK
     flag.getmatrices = 0;
+    flag.rerun = 0;
+    flag.recalculated = 0;
 end
 
 

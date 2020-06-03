@@ -86,6 +86,8 @@ Qpmli = listLHS{6};
 
 FEmatrices.H = H;
 FEmatrices.Q = Q; % Q may be useful for Mean Quadratic Pressure calculation
+% FEmatrices.Hpml = Hpmlr+1i*Hpmli;
+% FEmatrices.Qpml = Qpmlr+1i*Qpmli;
 
 % label of the different region of the mesh
 region_labels = load(['Matrices/',FILENAME,'/labels.txt']); 
@@ -110,7 +112,10 @@ end
 acoustic_nodes = find(acoustic_nodes);
 BGL_nodes = find(BGL_nodes);
 BGR_nodes = find(BGR_nodes);
-wall_nodes = find(abs(FEmatrices.Nodes(:,3))<(1e-10));
+
+wall_nodes = acoustic_nodes(find(FEmatrices.Nodes(acoustic_nodes,3)<(1e-10)));%find(abs(FEmatrices.Nodes(:,3))<(1e-10));
+%wall_nodes = find(abs(FEmatrices.Nodes(:,3))<1e-7);
+%wall_nodes = acoustic_nodes;
 
 % save arrays of Nodes, needed for partionning
 FEmatrices.acoustic_nodes = acoustic_nodes;
@@ -146,7 +151,7 @@ function FEmatrices = get_RHS(FEmatrices,param)
 % Cell of RHS against f and theta
 RHS_BG = cell(param.nfreq,param.ntheta);
 
-BG_nodes = FEmatrices.wall_nodes;
+BG_nodes = FEmatrices.acoustic_nodes;
 
 xbg = FEmatrices.Nodes(BG_nodes,1);
 zbg = FEmatrices.Nodes(BG_nodes,3);
@@ -155,11 +160,12 @@ FEmatrices.BG_pressure = zeros(FEmatrices.size_system,length(param.freq),length(
 
 P0 = 1;
 
+
 for ii=1:param.nfreq
     for jj=1:param.ntheta
-        U_inc = zeros(FEmatrices.size_system,1);
         k = 2*pi*param.freq(ii)/param.c0;
-        BG_Pressure_tmp = P0*exp(-1i*k*(xbg*cos(param.theta(jj))+zbg*sin(param.theta(jj))));%BG_Pressure_tmp = P0*cos(2*pi*param.freq(ii)/param.c0*( xbg*cos(param.theta(jj))+zbg*sin(param.theta(jj)) )); % the array should just contain 1 component
+        BG_Pressure_tmp = P0*exp(1i*k*(xbg*cos(param.theta(jj))+zbg*sin(param.theta(jj))));
+        U_inc = zeros(FEmatrices.size_system,1);
         U_inc(BG_nodes,1) = BG_Pressure_tmp;
         FEmatrices.BG_pressure(:,ii,jj) = U_inc;
         Z = FEmatrices.H - (2*pi*param.freq(ii)/param.c0)^2*FEmatrices.Q;
@@ -168,16 +174,6 @@ for ii=1:param.nfreq
 end
 
 FEmatrices.RHS_BG = RHS_BG;
-
-% % RHS
-% 
-% [~,node_zeros] = min(FEmatrices.Nodes(:,1).*FEmatrices.Nodes(:,1) + ...
-%                      FEmatrices.Nodes(:,2).*FEmatrices.Nodes(:,2) + ...
-%                      FEmatrices.Nodes(:,3).*FEmatrices.Nodes(:,3));
-% RHStmp = zeros(FEmatrices.size_system,1);
-% RHStmp(node_zeros) = 1;
-% FEmatrices.RHS = RHStmp;
-
 end
 
 

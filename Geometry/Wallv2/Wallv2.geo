@@ -6,46 +6,50 @@ coeff = 2.5;
 
 PML_thickness = 0.5;
 
+l = 2;
+
+lh = 0.5;
+
 //+
-Point(1) = {3, 0.30, 0, sizemesh/(coeff+1)};
+Point(1) = {l, lh, 0, sizemesh/coeff};
 //+
-Point(2) = {-3, 0.3, 0, sizemesh/(coeff+1)};
+Point(2) = {-l, lh, 0, sizemesh/coeff};
 //+
-Point(3) = {-3, -0.3, 0, sizemesh/(coeff+1)};
+Point(3) = {-l, -lh, 0, sizemesh/coeff};
 //+
-Point(4) = {3, -0.3, 0, sizemesh/(coeff+1)};
+Point(4) = {l, -lh, 0, sizemesh/coeff};
 //+
-Point(5) = {3+PML_thickness, -0.3-PML_thickness, 0, sizemesh};
+Point(5) = {l+PML_thickness, -lh-PML_thickness, 0, sizemesh};
 //+
-Point(6) = {3+PML_thickness, 0.3+PML_thickness, 0, sizemesh};
+Point(6) = {l+PML_thickness, lh+PML_thickness, 0, sizemesh};
 //+
-Point(7) = {-3-PML_thickness, 0.3+PML_thickness, 0, sizemesh};
+Point(7) = {-l-PML_thickness, lh+PML_thickness, 0, sizemesh};
 //+
-Point(8) = {-3-PML_thickness, -0.3-PML_thickness, 0, sizemesh};
+Point(8) = {-l-PML_thickness, -lh-PML_thickness, 0, sizemesh};
 //+
-Point(9) = {3, 0.30, 1.5, sizemesh/coeff};
+Point(9) = {l, lh, l, sizemesh/coeff};
 //+
-Point(10) = {-3, 0.3, 1.5, sizemesh/coeff};
+Point(10) = {-l, lh, l, sizemesh/coeff};
 //+
-Point(11) = {-3, -0.3, 1.5, sizemesh/coeff};
+Point(11) = {-l, -lh, l, sizemesh/coeff};
 //+
-Point(12) = {3, -0.3, 1.5, sizemesh/coeff};
+Point(12) = {l, -lh, l, sizemesh/coeff};
 //+
-Point(13) = {3+PML_thickness, -0.3-PML_thickness, 1.5+PML_thickness, sizemesh};
+Point(13) = {l+PML_thickness, -lh-PML_thickness, l+PML_thickness, sizemesh};
 //+
-Point(14) = {3+PML_thickness, 0.3+PML_thickness, 1.5+PML_thickness, sizemesh};
+Point(14) = {l+PML_thickness, lh+PML_thickness, l+PML_thickness, sizemesh};
 //+
-Point(15) = {-3-PML_thickness, 0.3+PML_thickness, 1.5+PML_thickness, sizemesh};
+Point(15) = {-l-PML_thickness, lh+PML_thickness, l+PML_thickness, sizemesh};
 //+
-Point(16) = {-3-PML_thickness, -0.3-PML_thickness, 1.5+PML_thickness, sizemesh};
+Point(16) = {-l-PML_thickness, -lh-PML_thickness, l+PML_thickness, sizemesh};
 //+
-Point(17) = {1, 0.3, 0, sizemesh/coeff};
+Point(17) = {0, lh, 0, sizemesh/coeff};
 //+
-Point(18) = {1, -0.3, 0, sizemesh/coeff};
+Point(18) = {0, -lh, 0, sizemesh/coeff};
 //+
-Point(19) = {1, 0.3, 1.5, sizemesh/coeff};
+Point(19) = {0, lh, l, sizemesh/coeff};
 //+
-Point(20) = {1, -0.3, 1.5, sizemesh/coeff};
+Point(20) = {0, -lh, l, sizemesh/coeff};
 //+
 
 //+
@@ -205,4 +209,6 @@ Physical Volume("BGR") = {2};
 //+
 Physical Volume("PML") = {3};
 //+
-Physical Surface("PMLext") = {18, 16, 13, 14, 17, 15};
+Physical Surface("PMLext") = {16, 13, 14, 17, 15};
+//+
+Physical Surface("wall") = {2, 1};
