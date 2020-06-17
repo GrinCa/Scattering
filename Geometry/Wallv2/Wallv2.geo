@@ -2,9 +2,9 @@
 
 sizemesh = 0.4;
 
-coeff = 2.5;
+coeff = 2;
 
-PML_thickness = 0.5;
+PML_thickness = 1;
 
 l = 2;
 
@@ -209,6 +209,13 @@ Physical Volume("BGR") = {2};
 //+
 Physical Volume("PML") = {3};
 //+
-Physical Surface("PMLext") = {16, 13, 14, 17, 15};
+Physical Surface("PMLext") = {16, 13, 14, 17, 15, 18};
 //+
 Physical Surface("wall") = {2, 1};
+
+
+//+
+Physical Surface("PML_acoustic") = {11, 10, 6, 4, 5, 3, 8, 9};
+
+//+
+Physical Surface("BGL_BGR") = {7};

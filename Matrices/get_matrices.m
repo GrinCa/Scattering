@@ -27,7 +27,6 @@ if (isupdated||flag.rerun) % EDP updated and/or mesh updated
    output = sprintf('[Get_matrices:infos] CPUtime for building of matrices %.4f s',timing.freefem);
    disp(output);
    disp('*********************************************************');
-   flag.recalculated = 1;
 end % if
 
 %--------------------------------------------------------------------------
@@ -63,6 +62,11 @@ toc;
 % return
 %--------------------------------------------------------------------------
 
+% RHS
+% RHSdata = importdata(strcat(mesh.file,'/',"RHS.txt")," ",3);
+% RHSdata = RHSdata.data;
+% FEmatrices.RHS = diag(sparse(RHSdata(:,1)+1,RHSdata(:,2)+1,RHSdata(:,3)));
+
 FEmatrices.Nodes = Nodes; 
 FEmatrices = build_global(FEmatrices,listLHS,param,mesh.file);
 end
@@ -74,6 +78,7 @@ function FEmatrices = build_global(FEmatrices,listLHS,param,FILENAME)
 % definition of the label numbering
 BGL_label = 1;
 BGR_label = 2;
+PML_label = 3;
 
 ndof = size(FEmatrices.Nodes,1);
 
@@ -83,37 +88,49 @@ Hpmlr = listLHS{3}; %Stiffness matrix PML domain
 Hpmli = listLHS{4};
 Qpmlr = listLHS{5}; %Mass matrix PML domain
 Qpmli = listLHS{6};
+Ht = listLHS{7};
 
 FEmatrices.H = H;
-FEmatrices.Q = Q; % Q may be useful for Mean Quadratic Pressure calculation
-% FEmatrices.Hpml = Hpmlr+1i*Hpmli;
-% FEmatrices.Qpml = Qpmlr+1i*Qpmli;
+FEmatrices.Q = Q;
+
 
 % label of the different region of the mesh
 region_labels = load(['Matrices/',FILENAME,'/labels.txt']); 
 
 % initialisation arrays of respective nodes
-acoustic_nodes = zeros(ndof,1);
 BGL_nodes = zeros(ndof,1);
 BGR_nodes = zeros(ndof,1);
+PML_nodes = zeros(ndof,1);
 
 
 for ii=1:length(region_labels)
-    if region_labels(ii,2) == BGL_label || region_labels(ii,2) == BGR_label
-        acoustic_nodes(region_labels(ii,1)+1) = 1;
-    end
     if region_labels(ii,2) == BGL_label
         BGL_nodes(region_labels(ii,1)+1) = 1;
     elseif region_labels(ii,2) == BGR_label
         BGR_nodes(region_labels(ii,1)+1) = 1;
+    elseif region_labels(ii,2) == PML_label
+        PML_nodes(region_labels(ii,1)+1) = 1;
     end
 end
 
-acoustic_nodes = find(acoustic_nodes);
+%test_nodes = find((-100*BGL_nodes-100*BGR_nodes+PML_nodes) > 0);
+acoustic_nodes = find((BGL_nodes+BGR_nodes) > 0); %-100*PML_nodes
 BGL_nodes = find(BGL_nodes);
 BGR_nodes = find(BGR_nodes);
+PML_nodes = find(PML_nodes);
 
-wall_nodes = acoustic_nodes(find(FEmatrices.Nodes(acoustic_nodes,3)<(1e-10)));%find(abs(FEmatrices.Nodes(:,3))<(1e-10));
+
+
+%figure
+%plot3(FEmatrices.Nodes(acoustic_nodes,1),FEmatrices.Nodes(acoustic_nodes,2),FEmatrices.Nodes(acoustic_nodes,3),'+');
+% figure
+% plot3(FEmatrices.Nodes(BGL_nodes,1),FEmatrices.Nodes(BGL_nodes,2),FEmatrices.Nodes(BGL_nodes,3),'+');
+% figure
+% plot3(FEmatrices.Nodes(acoustic_nodes,1),FEmatrices.Nodes(acoustic_nodes,2),FEmatrices.Nodes(acoustic_nodes,3),'+');
+% figure
+% plot3(FEmatrices.Nodes(PML_nodes,1),FEmatrices.Nodes(PML_nodes,2),FEmatrices.Nodes(PML_nodes,3),'+');
+
+%wall_nodes = acoustic_nodes(find(FEmatrices.Nodes(acoustic_nodes,3)<(1e-10)));%find(abs(FEmatrices.Nodes(:,3))<(1e-10));
 %wall_nodes = find(abs(FEmatrices.Nodes(:,3))<1e-7);
 %wall_nodes = acoustic_nodes;
 
@@ -121,7 +138,7 @@ wall_nodes = acoustic_nodes(find(FEmatrices.Nodes(acoustic_nodes,3)<(1e-10)));%f
 FEmatrices.acoustic_nodes = acoustic_nodes;
 FEmatrices.BGL_nodes = BGL_nodes;
 FEmatrices.BGR_nodes = BGR_nodes;
-FEmatrices.wall_nodes = wall_nodes;
+%FEmatrices.wall_nodes = wall_nodes;
 
 
 % indexing of the differents subspaces for partitionning
@@ -130,8 +147,8 @@ FEmatrices.indexp = acoustic_nodes;
 Hpml = Hpmlr+1i*Hpmli;
 Qpml = Qpmlr+1i*Qpmli;
 
-Kglob = H + Hpml;
-Mglob = Q + Qpml;
+Kglob = Hpml;
+Mglob = Qpml;
 
 FEmatrices.LHS = {Kglob,Mglob};
 % size of the "reduced" system < 4*ndof
@@ -151,6 +168,7 @@ function FEmatrices = get_RHS(FEmatrices,param)
 % Cell of RHS against f and theta
 RHS_BG = cell(param.nfreq,param.ntheta);
 
+%BG_nodes = 1:1:FEmatrices.size_system;
 BG_nodes = FEmatrices.acoustic_nodes;
 
 xbg = FEmatrices.Nodes(BG_nodes,1);
@@ -164,17 +182,18 @@ P0 = 1;
 for ii=1:param.nfreq
     for jj=1:param.ntheta
         k = 2*pi*param.freq(ii)/param.c0;
-        BG_Pressure_tmp = P0*exp(1i*k*(xbg*cos(param.theta(jj))+zbg*sin(param.theta(jj))));
+        BG_Pressure_tmp = P0*exp(-1i*k*(xbg*cos(param.theta(jj))+zbg*sin(param.theta(jj))));
         U_inc = zeros(FEmatrices.size_system,1);
         U_inc(BG_nodes,1) = BG_Pressure_tmp;
         FEmatrices.BG_pressure(:,ii,jj) = U_inc;
         Z = FEmatrices.H - (2*pi*param.freq(ii)/param.c0)^2*FEmatrices.Q;
-        RHS_BG{ii,jj} = Z*U_inc;
+        RHS_BG{ii,jj} = -Z*U_inc;
     end
 end
 
 FEmatrices.RHS_BG = RHS_BG;
 end
+
 
 
 

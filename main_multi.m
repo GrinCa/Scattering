@@ -73,9 +73,9 @@ timing.computeFE = 0;
 
 
 % Material parameters
-param.rho = 1.213;
-param.rhoS = 1188;
-param.c0 = 342.2;
+param.rho = 1.2;
+param.rhoS = 1200;
+param.c0 = 340;
 
 
 % Frequency range
@@ -138,9 +138,12 @@ param = build_interval(param);
 % Matrices calculated with Freefem++
 %--------------------------------------------------------------------------
 if flag.getmatrices
-    matrix_names = ["H.txt","Q.txt",... % matrices defined on the incident domain
-                    "Hpmlr.txt","Hpmli.txt",...
-                    "Qpmlr.txt","Qpmli.txt"];
+%     matrix_names = ["Hpmlr.txt","Hpmli.txt",...
+%                     "Qpmlr.txt","Qpmli.txt"];
+      matrix_names = ["H.txt","Q.txt",... % matrices defined on the incident domain
+                      "Hpmlr.txt","Hpmli.txt",...
+                      "Qpmlr.txt","Qpmli.txt",...
+                      "Ht.txt"];
 
     [FEmatrices,ndof,timing,flag] = get_matrices(timing,flag,mesh,matrix_names,param);
     Nodes = FEmatrices.Nodes;
@@ -171,11 +174,17 @@ if flag.calculateFE == 1
            tic;
            disp(['[FE] Frequency : ',num2str(param.freq(ii))]);
            Aglob = sparse(size(LHS{1},1),size(LHS{1},2));
+           id = initmumps;
+           id = zmumps(id);
+           id.JOB = 6;
+           id.RHS = FEmatrices.RHS_BG{ii,jj};
            for kk = 1:nLHS
               Aglob = Aglob + coeff_LHS{kk}(param.freq(ii))*LHS{kk};
            end
-           resp_P = Aglob\FEmatrices.RHS_BG{ii,jj};
-           SOLFE(:,ii,jj) = resp_P;
+           id = zmumps(id,Aglob);
+           SOLFE(:,ii,jj) = id.SOL;%Aglob\FEmatrices.RHS_BG{ii,jj};
+           id.JOB = -2;
+           id = zmumps(id);
            toc;
        end
    end
@@ -274,7 +283,6 @@ end
 %--------------------------------------------------------------------------
 % Saves
 %--------------------------------------------------------------------------
-% FE solution
 if flag.recalculated
     if flag.calculateFE
         save(['Matrices/',mesh.file,'/',param.idData,'/SOLFE_',mesh.file,'_sizemesh_',num2str(sizemesh),'.mat'],'SOLFE');
@@ -283,9 +291,6 @@ if flag.recalculated
     if flag.calculateWCAWE
         save(['Matrices/',mesh.file,'/',param.idData,'/SOLWCAWE_',mesh.file,'_nvec_',num2str(param.n_sub_range*nvecfreq),'_sizemesh_',num2str(sizemesh),'.mat'],'SOLWCAWE');
     end
-    
-    % save FEmatrices which contains all the data of the simulation for each
-    % mesh
     save(['Matrices/',mesh.file,'/',param.idData,'/','DATA_sizemesh_',num2str(sizemesh),'.mat'],'FEmatrices','param');
 end
 

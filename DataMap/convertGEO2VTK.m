@@ -56,12 +56,13 @@ SOLUTION = zeros(ndof,length(indexfreq),length(indextheta));
 SOLUTION(:,:,:) = real(SOL(:,:,:));
 
 
+
 for ii=indexfreq
     for jj=indextheta
         disp(['***Converting [FREQ,THETA] = [',num2str(param.freq(ii)),',',num2str(180*param.theta(jj)/pi),']***']);
         Scattered_field = zeros(ndof,length(indexfreq),length(indextheta));
-        Scattered_field(:,ii,jj) = SOLUTION(:,ii,jj);%FEmatrices.BG_pressure(:,ii,jj);
-        %Scattered_field(FEmatrices.wall_nodes,ii,jj) = 0;
+        Scattered_field(:,ii,jj) = SOLUTION(:,ii,jj);
+        
         file_name = strcat('DataMap/',FILENAME,'/',FILENAME,'_sizemesh_',num2str(sizemesh),'_freq_',num2str(param.freq(ii)),'_theta_',num2str(180*param.theta(jj)/pi),'.vtk');
 
         fileID = fopen(file_name,'wt');
